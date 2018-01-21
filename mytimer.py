@@ -3,6 +3,7 @@ from time import monotonic as timer # or time.time if it is not available
 import math
 import sys
 from PyQt5.QtWidgets import *
+from PyQt5.QtGui import *
 import dbus
 import threading
 
@@ -24,8 +25,13 @@ class Widget(QWidget):
     self.combo.addItem("2 Hours")
     self.combo.activated[str].connect(self.timechange)
     self.flag = threading.Event()
+    font = QFont()
+    #font.setFamily(_fromUtf8("FreeMono"))
+    font.setBold(True)
+    font.setPointSize(15)
     self.label = QLabel('TIME',self)
     self.label.move(150,30)
+    self.label.setFont(font)
     self.okButton = QPushButton("OK")
     self.cancelButton = QPushButton("Cancel")
     self.okButton.clicked.connect(self.Run)
@@ -41,7 +47,7 @@ class Widget(QWidget):
 
     self.setLayout(vbox)
 
-    self.setGeometry(300, 300, 350, 150)
+    self.setGeometry(300,300,400,100)
     self.setWindowTitle('Statusbar')    
     self.show()
 
