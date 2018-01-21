@@ -5,11 +5,7 @@ import sys
 from PyQt5.QtWidgets import *
 import dbus
 import threading
-import faulthandler
-faulthandler.enable()
 
-N = 1
-endtime = timer() + (N * 3600)
 _session_bus = dbus.SessionBus()
 _dbus_screensaver = _session_bus.get_object('org.freedesktop.ScreenSaver','/ScreenSaver')
 simulate_activity = _dbus_screensaver.get_dbus_method('SimulateUserActivity','org.freedesktop.ScreenSaver')
@@ -20,6 +16,13 @@ class Widget(QWidget):
     super().__init__()
     self.initUI()
   def initUI(self):               
+    self.N = 0.5
+    self.combo = QComboBox(self)
+    self.combo.addItem("30 Mins")
+    self.combo.addItem("1 Hour")
+    self.combo.addItem("1.5 Hours")
+    self.combo.addItem("2 Hours")
+    self.combo.activated[str].connect(self.timechange)
     self.flag = threading.Event()
     self.label = QLabel('TIME',self)
     self.label.move(150,30)
@@ -44,8 +47,9 @@ class Widget(QWidget):
 
   def run_clock(self):
     self.flag.set()
-    while timer() < endtime:
-      time = endtime - timer()
+    self.endtime = timer() + (self.N * 3600)
+    while timer() < self.endtime:
+      time = self.endtime - timer()
       displaytime = to_humantime(time)
       print(" Time Remaining :",displaytime,'\r',end='')
       self.label.setText(displaytime)    
@@ -54,19 +58,46 @@ class Widget(QWidget):
         break
     return
 
+  def close_application(self):
+    choice = QMessageBox.question(self, 'Running!!',
+                                          "Timer Already running . You want to cancel ?",
+                                          QMessageBox.Yes | QMessageBox.No)
+    if choice == QMessageBox.Yes:
+      self.Kill()
+      sys.exit()
+    else:
+      pass
 
-
-  #def stop_clock(self):
+  def timechange(self,text):
+    if self.flag.is_set():
+      self.close_application()
+    if text == "30 Mins":
+      self.N = 0.5
+    if text == "1 Hour":
+      self.N = 1
+    if text == "1.5 Hours":
+      self.N = 1.5
+    if text == "2 Hours":
+      self.N = 2
+    return
   def Kill(self):          
     self.flag.clear()
-    self.p.join()
-    interrupt()
+    try:
+      self.p.join()
+      self.interrupt()
+    except AttributeError:
+      pass
     quit()
 
   def Run(self):            
     self.p = threading.Thread(target=self.run_clock, name="_proc")
     self.p.start()
 
+  def interrupt(self):
+    time = self.endtime - timer()
+    displaytime = to_humantime(time)
+    print ("Interrupted with ",displaytime," time remaining" )
+    sys.exit(0)
 
 def to_humantime(time): # This time needs to be in secs as float
   sec = int(math.floor(time))
@@ -77,14 +108,8 @@ def to_humantime(time): # This time needs to be in secs as float
   displaytime = str(hrs) + ":" + str(mins).zfill(2) + ":"+str(secs).zfill(2)+":"+str(int(micro*100)).zfill(2)
   return displaytime
 
-def interrupt():
-  time = endtime - timer()
-  displaytime = to_humantime(time)
-  print ("Interrupted with ",displaytime," time remaining" )
-  sys.exit(0)
 
 
 app = QApplication(sys.argv)
 ex = Widget()
 sys.exit(app.exec_())
-print ("\n",N," Hours Over")
